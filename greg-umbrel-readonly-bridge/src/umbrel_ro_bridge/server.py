@@ -8,7 +8,6 @@ docker inspect oder der Service-Umgebung erscheinen.
 """
 
 import asyncio
-import hmac
 import json
 import os
 import secrets
@@ -18,10 +17,8 @@ from typing import Any
 from mcp.server import Server
 from mcp.server.sse import SseServerTransport
 from mcp.types import TextContent, Tool
-from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse, PlainTextResponse
-from starlette.routing import Route
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 import uvicorn
 
 from umbrel_ro_bridge import fs
@@ -123,64 +120,85 @@ async def list_tools() -> list:
 
 
 # ---------------------------------------------------------------------------
-# HTTP/SSE-Transport mit Bearer-Token (secrets.compare_digest)
+# Auth helpers
 # ---------------------------------------------------------------------------
 
+def _auth_error(message: str) -> JSONResponse:
+    return JSONResponse({"error": message}, status_code=401)
 
-class AuthenticatedSseTransport(SseServerTransport):
-    """SseServerTransport mit Bearer-Token-Pruefung."""
 
-    def __init__(self, token: str, endpoint: str):
-        super().__init__(endpoint)
-        self._token = token
+def _bearer_from_scope(scope) -> str | None:
+    for name, value in scope.get("headers", []):
+        if name.lower() == b"authorization":
+            auth = value.decode("latin1")
+            parts = auth.split(None, 1)
+            if len(parts) == 2 and parts[0].lower() == "bearer":
+                return parts[1]
+    return None
 
-    @staticmethod
-    def _auth_error(message: str) -> JSONResponse:
-        return JSONResponse({"error": message}, status_code=401)
 
-    async def connect_sse(self, request: Request):
-        auth = request.headers.get("authorization", "")
-        if not auth:
-            return self._auth_error("Missing Authorization header")
-        parts = auth.split(None, 1)
-        if len(parts) != 2 or parts[0].lower() != "bearer":
-            return self._auth_error("Invalid Authorization scheme")
-        provided = parts[1]
-        if not provided or not secrets.compare_digest(provided, self._token):
-            return self._auth_error("Invalid token")
-        return await super().connect_sse(request)
-
+# ---------------------------------------------------------------------------
+# ASGI-App mit Bearer-Token, SSE und Messages
+# ---------------------------------------------------------------------------
 
 def build_starlette_app(token: str | None = None):
-    """Erzeugt die Starlette-App. Lädt das Token lazy, falls nicht übergeben."""
+    """Erzeugt die ASGI-App. Lädt das Token lazy, falls nicht übergeben."""
     if token is None:
         token = _load_token()
 
-    sse = AuthenticatedSseTransport(token, "/messages/")
+    sse = SseServerTransport("/messages/")
 
-    async def _handle_sse(request: Request):
-        return await sse.connect_sse(request)
+    async def _handle_sse(scope, receive, send):
+        async with sse.connect_sse(scope, receive, send) as streams:
+            await app.run(streams[0], streams[1], app.create_initialization_options())
+        response = Response()
+        await response(scope, receive, send)
 
-    async def _handle_messages(request: Request):
-        return await sse.handle_post_message(request)
+    async def _handle_health(scope, receive, send):
+        response = PlainTextResponse("ok", status_code=200)
+        await response(scope, receive, send)
 
-    return Starlette(
-        debug=False,
-        routes=[
-            Route("/sse", _handle_sse, methods=["GET"]),
-            Route("/messages/", _handle_messages, methods=["POST"]),
-            Route("/health", handle_health, methods=["GET"]),
-        ],
-    )
+    async def _require_auth(scope, receive, send):
+        provided = _bearer_from_scope(scope)
+        if provided is None or not secrets.compare_digest(provided, token):
+            response = _auth_error("Missing or invalid Authorization header")
+            await response(scope, receive, send)
+            return False
+        return True
+
+    async def asgi_app(scope, receive, send):
+        if scope["type"] != "http":
+            response = Response("Not Found", status_code=404)
+            await response(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+
+        if path == "/health":
+            await _handle_health(scope, receive, send)
+            return
+
+        if path == "/sse" and method == "GET":
+            if not await _require_auth(scope, receive, send):
+                return
+            await _handle_sse(scope, receive, send)
+            return
+
+        if path.startswith("/messages/") and method == "POST":
+            if not await _require_auth(scope, receive, send):
+                return
+            await sse.handle_post_message(scope, receive, send)
+            return
+
+        response = Response("Not Found", status_code=404)
+        await response(scope, receive, send)
+
+    return asgi_app
 
 
 starlette_app = None  # Wird lazy in main_http() erzeugt, damit der Import
                       # ohne /run/secrets/bridge-token funktioniert.
-
-
-async def handle_health(request: Request):
-    """Anonymer Health-Check ohne sensitive Daten."""
-    return PlainTextResponse("ok", status_code=200)
 
 
 async def main_http():

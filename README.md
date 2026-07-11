@@ -11,7 +11,7 @@ Dieser private Umbrel Community App Store enthält die App **Umbrel Read-Only Br
 
 - **App-ID:** `greg-umbrel-readonly-bridge`
 - **Name:** `Umbrel Read-Only Bridge`
-- **Version:** `1.0.0`
+- **Version:** `1.0.2`
 
 ## Zweck
 
@@ -38,7 +38,8 @@ werden.
 ## Bauen und Veröffentlichen
 
 Das Image wird über GitHub Actions für `linux/amd64` und `linux/arm64` gebaut
-und nach GHCR veröffentlicht. Tags: `1.0.0` und `latest`.
+und nach GHCR veröffentlicht. Tags werden aus dem Git-Tag `v*.*.*` abgeleitet
+(`1.0.2`) und zusätzlich `latest`.
 
 ## Voraussetzungen für Veröffentlichung
 
@@ -48,9 +49,10 @@ und nach GHCR veröffentlicht. Tags: `1.0.0` und `latest`.
    kann Umbrel das Image nicht pullen.
 3. Ersetze **vor** Installation und Build überall `greg-built-it` durch den
    tatsächlichen GitHub-Account/Organisation.
-4. Nach dem ersten erfolgreichen GitHub-Actions-Build solltest du den Image-Digest
-   für das Tag `1.0.0` ermitteln und in `docker-compose.yml` fixieren. Damit bleibt
-   die App gegen ein unerwartetes Überschreiben von `latest` geschützt.
+4. Nach jedem erfolgreichen GitHub-Actions-Build solltest du den Image-Digest
+   für das gerade veröffentlichte Tag ermitteln und in `docker-compose.yml`
+   fixieren. Damit bleibt die App gegen ein unerwartetes Überschreiben von
+   `latest` geschützt.
 5. Aktualisiere Hermes `MCP_UMBREL_RO_API_KEY` nach der Installation gemäß
    `TOKEN-MIGRATION.md`.
 

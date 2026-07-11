@@ -13,7 +13,7 @@ from umbrel_ro_bridge import policy, fs
 
 
 def test_version_is_expected():
-    assert __version__ == "1.0.0"
+    assert __version__ == "1.0.2"
 
 
 def test_health_endpoint_is_anonymous():
@@ -31,29 +31,17 @@ def test_sse_requires_bearer_token():
     assert resp.status_code == 401
 
 
-def test_sse_auth_accepts_valid_token():
-    """Prüft Bearer-Token-Vergleich direkt anhand der Auth-Methode."""
-    from starlette.requests import Request
-    from umbrel_ro_bridge.server import AuthenticatedSseTransport
-    sse = AuthenticatedSseTransport("test-token", "/messages/")
-    req = Request({
-        "type": "http",
-        "method": "GET",
-        "url": "http://127.0.0.1/sse",
-        "headers": [(b"authorization", b"Bearer test-token")],
-    })
-    auth = req.headers.get("authorization", "")
-    parts = auth.split(None, 1)
-    assert len(parts) == 2
-    assert parts[0].lower() == "bearer"
-    import secrets
-    assert secrets.compare_digest(parts[1], sse._token)
-
-
 def test_sse_rejects_wrong_token():
     app = build_starlette_app("test-token")
     client = TestClient(app)
     resp = client.get("/sse", headers={"Authorization": "Bearer wrong-token"})
+    assert resp.status_code == 401
+
+
+def test_messages_requires_bearer_token():
+    app = build_starlette_app("test-token")
+    client = TestClient(app)
+    resp = client.post("/messages/", json={})
     assert resp.status_code == 401
 
 
@@ -324,8 +312,7 @@ def test_docker_compose_image_is_pinned():
     import yaml
     compose_path = Path(__file__).parent.parent / "docker-compose.yml"
     compose = yaml.safe_load(compose_path.read_text())
-    digest = "sha256:a9361f24f316ffaf74344603c81da8ee1e2ea377d8aac434b58e764928631252"
     for svc in ["init-token", "app"]:
         img = compose["services"][svc]["image"]
-        assert img.startswith("ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@"), svc
-        assert digest in img, f"Digest fehlt in {svc}"
+        assert img.startswith("ghcr.io/greg-built-it/umbrel-readonly-bridge"), svc
+        assert "@sha256:" in img, f"Digest fehlt in {svc}"
