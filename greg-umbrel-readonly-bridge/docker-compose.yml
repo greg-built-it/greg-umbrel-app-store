@@ -1,5 +1,3 @@
-version: "3.7"
-
 services:
   init-token:
     image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@sha256:a9361f24f316ffaf74344603c81da8ee1e2ea377d8aac434b58e764928631252
@@ -23,16 +21,8 @@ services:
       BRIDGE_PORT: "8080"
       BRIDGE_MODE: "standard"
     volumes:
-      - type: bind
-        source: "${UMBREL_ROOT}"
-        target: "/host/umbrel"
-        read_only: true
-        bind:
-          propagation: rslave
-      - type: bind
-        source: "${APP_DATA_DIR}/data/bridge-token"
-        target: "/run/secrets/bridge-token"
-        read_only: true
+      - "${UMBREL_ROOT}:/host/umbrel:ro,rslave"
+      - "${APP_DATA_DIR}/data/bridge-token:/run/secrets/bridge-token:ro"
     read_only: true
     cap_drop:
       - ALL

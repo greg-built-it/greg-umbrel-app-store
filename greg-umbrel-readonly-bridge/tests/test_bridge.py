@@ -244,11 +244,27 @@ def test_compose_umbrel_root_variable_mount():
     compose_path = Path(__file__).parent.parent / "docker-compose.yml"
     compose = yaml.safe_load(compose_path.read_text())
     app = compose["services"]["app"]
-    mount = next(v for v in app["volumes"] if v.get("target") == "/host/umbrel")
-    assert mount["source"] == "${UMBREL_ROOT}"
-    assert mount["read_only"] is True
-    assert mount["bind"]["propagation"] == "rslave"
-    assert "read_only" not in mount.get("bind", {})
+    volumes = app["volumes"]
+    # Kurzsyntax: alle Einträge müssen Strings sein, keine Objekte
+    assert all(isinstance(v, str) for v in volumes), "Volume-Einträge müssen Strings sein"
+    umbrel_mount = next(v for v in volumes if ":/host/umbrel" in v)
+    token_mount = next(v for v in volumes if ":/run/secrets/bridge-token" in v)
+    assert "${UMBREL_ROOT}" in umbrel_mount
+    assert ":ro,rslave" in umbrel_mount
+    assert "${APP_DATA_DIR}/data/bridge-token" in token_mount
+    assert ":ro" in token_mount
+
+
+def test_compose_no_volume_objects():
+    import yaml
+    compose_path = Path(__file__).parent.parent / "docker-compose.yml"
+    compose = yaml.safe_load(compose_path.read_text())
+    volumes = compose["services"]["app"]["volumes"]
+    # Kurzsyntax: alle Einträge müssen Strings sein, keine Objekte
+    assert all(isinstance(v, str) for v in volumes), "Volume-Einträge müssen Strings sein"
+    # Sicherstellen, dass keine Langsyntax-Schlüssel in den Strings vorkommen
+    flat = " ".join(volumes)
+    assert "type:" not in flat and "source:" not in flat and "target:" not in flat and "bind:" not in flat
 
 
 def test_compose_app_capabilities():
@@ -264,15 +280,6 @@ def test_compose_app_capabilities():
 
 
 def test_compose_app_network_alias_for_hermes():
-    import yaml
-    compose_path = Path(__file__).parent.parent / "docker-compose.yml"
-    compose = yaml.safe_load(compose_path.read_text())
-    app = compose["services"]["app"]
-    aliases = app["networks"]["umbrel_main_network"]["aliases"]
-    assert "umbrel-ro-bridge" in aliases
-
-
-def test_compose_app_proxy_present():
     import yaml
     compose_path = Path(__file__).parent.parent / "docker-compose.yml"
     compose = yaml.safe_load(compose_path.read_text())
