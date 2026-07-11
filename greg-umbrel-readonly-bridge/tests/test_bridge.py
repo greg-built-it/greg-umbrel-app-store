@@ -310,3 +310,15 @@ def test_no_github_user_placeholder_anywhere():
                 assert "<GITHUB_USER>" not in content, f"Platzhalter in {fp}"
             except Exception:
                 pass
+
+
+def test_docker_compose_image_is_pinned():
+    """Compose muss das Image mit SHA256-Digest referenzieren."""
+    import yaml
+    compose_path = Path(__file__).parent.parent / "docker-compose.yml"
+    compose = yaml.safe_load(compose_path.read_text())
+    digest = "sha256:be2696653db563e6888693a241bfcfaf3cb81e6b5e58251a803c33b7a3517180"
+    for svc in ["init-token", "app"]:
+        img = compose["services"][svc]["image"]
+        assert img.startswith("ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@"), svc
+        assert digest in img, f"Digest fehlt in {svc}"
