@@ -317,7 +317,7 @@ def test_docker_compose_image_is_pinned():
     import yaml
     compose_path = Path(__file__).parent.parent / "docker-compose.yml"
     compose = yaml.safe_load(compose_path.read_text())
-    digest = "sha256:be2696653db563e6888693a241bfcfaf3cb81e6b5e58251a803c33b7a3517180"
+    digest = "sha256:a9361f24f316ffaf74344603c81da8ee1e2ea377d8aac434b58e764928631252"
     for svc in ["init-token", "app"]:
         img = compose["services"][svc]["image"]
         assert img.startswith("ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@"), svc

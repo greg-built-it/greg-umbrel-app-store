@@ -2,7 +2,7 @@ version: "3.7"
 
 services:
   init-token:
-    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@sha256:be2696653db563e6888693a241bfcfaf3cb81e6b5e58251a803c33b7a3517180
+    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@sha256:a9361f24f316ffaf74344603c81da8ee1e2ea377d8aac434b58e764928631252
     user: "0:0"
     entrypoint: ["/app/scripts/init-token.sh"]
     command: []
@@ -15,7 +15,7 @@ services:
     restart: "no"
 
   app:
-    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@sha256:be2696653db563e6888693a241bfcfaf3cb81e6b5e58251a803c33b7a3517180
+    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0@sha256:a9361f24f316ffaf74344603c81da8ee1e2ea377d8aac434b58e764928631252
     restart: unless-stopped
     user: "0:0"
     environment:
