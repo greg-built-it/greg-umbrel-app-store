@@ -1,0 +1,7 @@
+id: greg
+name: "Greg Private"
+
+# Community App Store metadata
+author: "Greg"
+apps:
+  - greg-umbrel-readonly-bridge

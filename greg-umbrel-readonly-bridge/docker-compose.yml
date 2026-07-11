@@ -1,0 +1,67 @@
+version: "3.7"
+
+services:
+  init-token:
+    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0
+    user: "0:0"
+    entrypoint: ["/app/scripts/init-token.sh"]
+    command: []
+    volumes:
+      - "${APP_DATA_DIR}/data:/data:rw"
+    security_opt:
+      - "no-new-privileges:true"
+    cap_drop:
+      - ALL
+    restart: "no"
+
+  app:
+    image: ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.0
+    restart: unless-stopped
+    user: "0:0"
+    environment:
+      BRIDGE_HOST: "0.0.0.0"
+      BRIDGE_PORT: "8080"
+      BRIDGE_MODE: "standard"
+    volumes:
+      - type: bind
+        source: "${UMBREL_ROOT}"
+        target: "/host/umbrel"
+        read_only: true
+        bind:
+          propagation: rslave
+      - type: bind
+        source: "${APP_DATA_DIR}/data/bridge-token"
+        target: "/run/secrets/bridge-token"
+        read_only: true
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH
+    security_opt:
+      - "no-new-privileges:true"
+    networks:
+      default:
+      umbrel_main_network:
+        aliases:
+          - umbrel-ro-bridge
+    depends_on:
+      init-token:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  app_proxy:
+    environment:
+      APP_HOST: greg-umbrel-readonly-bridge_app_1
+      APP_PORT: 8080
+      PROXY_AUTH_ADD: "false"
+
+networks:
+  umbrel_main_network:
+    external: true
+    name: umbrel_main_network
