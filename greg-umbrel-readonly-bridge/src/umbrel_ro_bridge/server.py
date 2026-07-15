@@ -22,6 +22,7 @@ from starlette.responses import JSONResponse, PlainTextResponse, Response
 import uvicorn
 
 from umbrel_ro_bridge import fs
+from umbrel_ro_bridge import openclaw_client
 from umbrel_ro_bridge.secrets_filter import mask_secrets
 
 
@@ -71,6 +72,9 @@ TOOLS = [
     Tool(name="mount_inventory", description="Listet Mounts unter /host/umbrel auf.", inputSchema={"type": "object", "properties": {}}),
     Tool(name="du", description="Ermittelt Groessen von Verzeichnissen.", inputSchema={"type": "object", "properties": {"path": {"type": "string"}, "maxdepth": {"type": "integer", "maximum": 5}}, "required": ["path"]}),
     Tool(name="file_type", description="Gibt Dateityp/Statistik zurueck.", inputSchema={"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]}),
+    Tool(name="openclaw_container_status", description="Zeigt Status eines OpenClaw-Containers (gateway oder app_proxy).", inputSchema={"type": "object", "properties": {"container": {"type": "string", "enum": ["gateway", "app_proxy"]}}, "required": ["container"]}),
+    Tool(name="openclaw_container_logs", description="Zeigt die letzten Zeilen eines OpenClaw-Containers (gateway oder app_proxy).", inputSchema={"type": "object", "properties": {"container": {"type": "string", "enum": ["gateway", "app_proxy"]}, "tail": {"type": "integer", "minimum": 1, "maximum": 500}}, "required": ["container"]}),
+    Tool(name="openclaw_resource_status", description="Zeigt Ressourcenstatus beider OpenClaw-Container.", inputSchema={"type": "object", "properties": {}}),
 ]
 
 
@@ -105,6 +109,15 @@ async def call_tool(name: str, arguments: Any) -> list:
             result = fs.du(path, maxdepth=arguments.get("maxdepth", 2))
         elif name == "file_type":
             result = fs.file_type(path)
+        elif name == "openclaw_container_status":
+            result = await openclaw_client.container_status(arguments["container"])
+        elif name == "openclaw_container_logs":
+            tail = arguments.get("tail", 100)
+            if not isinstance(tail, int) or isinstance(tail, bool) or tail < 1 or tail > 500:
+                raise ValueError("tail muss eine Ganzzahl zwischen 1 und 500 sein")
+            result = await openclaw_client.container_logs(arguments["container"], tail=tail)
+        elif name == "openclaw_resource_status":
+            result = await openclaw_client.resource_status()
         else:
             raise ValueError(f"Unbekanntes Werkzeug: {name}")
         text = json.dumps(result, ensure_ascii=False, default=str)

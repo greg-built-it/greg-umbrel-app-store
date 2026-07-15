@@ -101,7 +101,7 @@ async def test_mcp_client_lists_13_tools(base_url):
             await session.initialize()
             tools = await session.list_tools()
             names = [tool.name for tool in tools.tools]
-            assert len(names) == 13
+            assert len(names) == 16
             assert "list_directory" in names
             assert "read_text" in names
             assert "mount_inventory" in names

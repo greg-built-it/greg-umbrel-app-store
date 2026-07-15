@@ -264,7 +264,7 @@ def test_compose_app_capabilities():
     assert app["cap_add"] == ["DAC_READ_SEARCH"]
     assert "privileged" not in app
     assert "ports" not in app
-    assert "docker.sock" not in str(compose)
+    assert "docker.sock" not in str(app)
 
 
 def test_compose_app_network_alias_for_hermes():
