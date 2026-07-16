@@ -64,10 +64,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       PYTHONUNBUFFERED: "1"
     volumes:
-      - type: bind
-        source: /var/run/docker.sock
-        target: /var/run/docker.sock
-        read_only: true
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
       - "bridge_proxy_socket:/run/proxy:rw"
     read_only: true
     cap_drop:
