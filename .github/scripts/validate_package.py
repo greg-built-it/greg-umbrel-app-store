@@ -15,14 +15,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 APP_ID = "greg-umbrel-readonly-bridge"
 APP_DIR = ROOT / APP_ID
-VERSION = "1.0.5"
+VERSION = "1.0.7"
 BRIDGE_IMAGE = (
-    "ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.5@sha256:"
-    "cf326747efbdc2938f79b06b1447de77e2c0a41fa13c560c0ff8079e9c16bb00"
+    "ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.7@sha256:"
+    "64d68675d941faaab661545fb1bdf64cb0e1457eb6c7e6dcb1f710e00121cca5"
 )
 PROXY_IMAGE = (
-    "ghcr.io/greg-built-it/umbrel-openclaw-docker-proxy:1.0.5@sha256:"
-    "d08ff76fc5d3daa32d4dd875b13e52defedcefe67e6dc6731103b500c41491b5"
+    "ghcr.io/greg-built-it/umbrel-openclaw-docker-proxy:1.0.7@sha256:"
+    "3285e8c751aa96d02a774ebe6463b37f88841fd33983a5a97bfeb4026d8ec7c1"
 )
 
 
@@ -71,6 +71,9 @@ def validate() -> None:
         if service.get("image") != expected_image:
             fail(f"unexpected immutable image reference for {service_name}")
 
+    image_pattern = re.compile(
+        rf"^ghcr\.io/[^\s]+:{re.escape(VERSION)}@sha256:[0-9a-f]{{64}}$"
+    )
     for service_name, service in services.items():
         if not isinstance(service, dict):
             fail(f"Compose service {service_name} must be a mapping")
@@ -79,6 +82,20 @@ def validate() -> None:
             isinstance(volume, str) for volume in volumes
         ):
             fail(f"all volume entries for {service_name} must be strings")
+        image = service.get("image")
+        if image is not None and (
+            not isinstance(image, str) or image_pattern.fullmatch(image) is None
+        ):
+            fail(f"image for {service_name} must be an immutable {VERSION} digest")
+
+    package_text = "\n".join(
+        path.read_text(encoding="utf-8")
+        for path in (APP_DIR / "umbrel-app.yml", APP_DIR / "docker-compose.yml")
+    )
+    if ":latest" in package_text:
+        fail("latest image reference is forbidden")
+    if ":1.0.5@sha256:" in package_text or ":1.0.6@sha256:" in package_text:
+        fail("stale release image reference found")
 
     markers = ("PLACE" + "HOLDER", "TO" + "DO", "FIX" + "ME")
     secret_patterns = {
@@ -123,8 +140,9 @@ def validate() -> None:
             fail(f"release tag must be {expected_tag}")
 
     print(
-        "PACKAGE_VALIDATION=pass version=1.0.5 gallery=[] "
-        "volumes=strings images=immutable markers=clean secrets=clean"
+        f"PACKAGE_VALIDATION=pass version={VERSION} gallery=[] "
+        "volumes=strings images=immutable latest=absent stale=absent "
+        "markers=clean secrets=clean"
     )
 
 
