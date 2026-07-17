@@ -15,14 +15,14 @@ import yaml
 ROOT = Path(__file__).resolve().parents[2]
 APP_ID = "greg-umbrel-readonly-bridge"
 APP_DIR = ROOT / APP_ID
-VERSION = "1.0.4"
+VERSION = "1.0.5"
 BRIDGE_IMAGE = (
-    "ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.4@sha256:"
-    "12f5d428e49d5a542c85d95b9a422bb461a4f97b73458ddfe6e92d7f73bcff8b"
+    "ghcr.io/greg-built-it/umbrel-readonly-bridge:1.0.5@sha256:"
+    "cf326747efbdc2938f79b06b1447de77e2c0a41fa13c560c0ff8079e9c16bb00"
 )
 PROXY_IMAGE = (
-    "ghcr.io/greg-built-it/umbrel-openclaw-docker-proxy:1.0.4@sha256:"
-    "fc3d860a6291116995a77e0d21286e460751b70b6f5d6b9ea0da34a4c9c83e0d"
+    "ghcr.io/greg-built-it/umbrel-openclaw-docker-proxy:1.0.5@sha256:"
+    "d08ff76fc5d3daa32d4dd875b13e52defedcefe67e6dc6731103b500c41491b5"
 )
 
 
@@ -50,7 +50,7 @@ def validate() -> None:
     if manifest.get("id") != APP_ID:
         fail("manifest app id mismatch")
     if manifest.get("version") != VERSION:
-        fail("manifest version must be 1.0.4")
+        fail(f"manifest version must be {VERSION}")
     if manifest.get("gallery") != []:
         fail("manifest gallery must be an empty list")
     if APP_ID not in store.get("apps", []):
@@ -123,7 +123,7 @@ def validate() -> None:
             fail(f"release tag must be {expected_tag}")
 
     print(
-        "PACKAGE_VALIDATION=pass version=1.0.4 gallery=[] "
+        "PACKAGE_VALIDATION=pass version=1.0.5 gallery=[] "
         "volumes=strings images=immutable markers=clean secrets=clean"
     )
 
